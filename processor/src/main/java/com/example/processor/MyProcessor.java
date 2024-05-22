@@ -23,6 +23,12 @@ import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
 
+/***
+ * 注解 @SupportedAnnotationTypes 与 getSupportedAnnotationTypes() 方法效果是一样的。
+ * 注解 @SupportedSourceVersion 与 getSupportedSourceVersion() 效果是一样的
+ * 对于注解作用在kotlin编写的类中，SourceVersion.RELEASE_8可以会不起作用，可以试着把SourceVersion变大一下试试
+ */
+
 @AutoService(Processor.class)
 //@SupportedAnnotationTypes("com.example.apt_annotation.Print")
 //@SupportedSourceVersion(SourceVersion.RELEASE_8)
@@ -51,6 +57,7 @@ public class MyProcessor extends AbstractProcessor {
      */
     @Override
     public SourceVersion getSupportedSourceVersion() {
+        System.out.println("Hello1 APT processingEnv.getSourceVersion() = " + processingEnv.getSourceVersion());
         return processingEnv.getSourceVersion();
     }
 
