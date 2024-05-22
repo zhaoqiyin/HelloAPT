@@ -2,6 +2,9 @@ package com.example.processor;
 
 import com.example.annotation.Print;
 import com.google.auto.service.AutoService;
+import com.squareup.javapoet.JavaFile;
+import com.squareup.javapoet.MethodSpec;
+import com.squareup.javapoet.TypeSpec;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -14,6 +17,7 @@ import javax.annotation.processing.Processor;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic;
@@ -52,33 +56,75 @@ public class MyProcessor extends AbstractProcessor {
 
     /**
      * 扫描注解回调
+     * process方法内部用到了直接拼接的方法，EventBus源码用的就是直接拼接的方法
+     */
+//    @Override
+//    public boolean process(Set<? extends TypeElement> set, RoundEnvironment roundEnvironment) {
+//        Set<? extends Element> elements = roundEnvironment.getElementsAnnotatedWith(Print.class);
+//        try {
+//            JavaFileObject fileObject = processingEnv.getFiler().createSourceFile("PrintUtil");
+//            Writer writer = fileObject.openWriter();
+//            writer.write("package com.example.apt_demo;\n");
+//            writer.write("\n");
+//            writer.write("public class PrintUtil{\n");
+//            for (Element e: elements) {
+//                Name simpleName = e.getSimpleName();
+//                //processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,simpleName);
+//                writer.write("    //输出"+simpleName+"\n");
+//                writer.write("   public static void print$$"+simpleName+"() {\n");
+//                writer.write("        System.out.println(\"Hello "+simpleName+ "\");\n   }\n\n");
+//
+//            }
+//            writer.write("}");
+//            writer.flush();
+//            writer.close();
+//
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//
+//        return false;
+//    }
+
+
+    /**
+     * 扫描注解回调
+     * 以下用Javapoet生成
+     * JavaPoet，这玩意好像可以帮我们以面向对象的思维来生成类，这样我们就不用手动拼接字符串的方式来生成类了
      */
     @Override
-    public boolean process(Set<? extends TypeElement> set, RoundEnvironment roundEnvironment) {
-        Set<? extends Element> elements = roundEnvironment.getElementsAnnotatedWith(Print.class);
+    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+        //拿到所有添加Print注解的成员变量
+        Set<? extends Element> elements = roundEnv.getElementsAnnotatedWith(Print.class);
+
+        //生成类
+        TypeSpec.Builder classBuilder = TypeSpec
+                .classBuilder("PrintUtil")
+                .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+
+        for (Element element : elements) {
+            //拿到成员变量名
+            Name simpleName = element.getSimpleName();
+            //生成方法
+            MethodSpec method = MethodSpec.methodBuilder("print$$"+simpleName)
+                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                    .returns(void.class)
+                    .addStatement("$T.out.println($S)", System.class, "Hello, JavaPoet!")
+                    .build();
+            classBuilder.addMethod(method);
+        }
+        //包
+        JavaFile javaFile = JavaFile
+                .builder("com.example.apt_demo", classBuilder.build())
+                .build();
         try {
-            JavaFileObject fileObject = processingEnv.getFiler().createSourceFile("PrintUtil");
-            Writer writer = fileObject.openWriter();
-            writer.write("package com.example.apt_demo;\n");
-            writer.write("\n");
-            writer.write("public class PrintUtil{\n");
-            for (Element e: elements) {
-                Name simpleName = e.getSimpleName();
-                //processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,simpleName);
-                writer.write("    //输出"+simpleName+"\n");
-                writer.write("   public static void print$$"+simpleName+"() {\n");
-                writer.write("        System.out.println(\"Hello "+simpleName+ "\");\n   }\n\n");
-
-            }
-            writer.write("}");
-            writer.flush();
-            writer.close();
-
+            javaFile.writeTo(processingEnv.getFiler());
         } catch (IOException e) {
             e.printStackTrace();
         }
-
         return false;
     }
+
+
 
 }
